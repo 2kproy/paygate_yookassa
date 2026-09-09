@@ -1,0 +1,25 @@
+# paygate — автономный платёжный релей. Ставится рядом с сайтом-агрегатором.
+#
+# Каждый агрегатор = свой .env.prod (свой ключ ЮKassa, свои секреты, свой FORWARD_URL).
+# Caddy сайта проксирует /bff/* /agg/* /pay/* → paygate:8790 (см. Caddyfile.snippet).
+#
+# CADDY_NETWORK — имя docker-сети, в которой живёт Caddy сайта (docker network ls),
+# напр. sova-panel_default. paygate входит в неё, чтобы Caddy достучался по имени.
+services:
+  paygate:
+    build: .
+    image: paygate:latest
+    container_name: paygate
+    restart: unless-stopped
+    env_file: .env.prod
+    volumes:
+      - ./data:/data
+    expose:
+      - '8790'
+    networks:
+      - web
+
+networks:
+  web:
+    external: true
+    name: ${CADDY_NETWORK:-sova-panel_default}
