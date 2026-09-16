@@ -19,8 +19,8 @@ function isObject(v: unknown): v is Record<string, any> {
 }
 
 const insertToken = db.prepare(
-  `INSERT INTO redirect_token (token, payment_id, order_id, return_url, status, created_at, expires_at)
-   VALUES (@token, @payment_id, @order_id, @return_url, 'pending', @created_at, @expires_at)`
+  `INSERT INTO redirect_token (token, payment_id, order_id, return_url, pay_url, status, created_at, expires_at)
+   VALUES (@token, @payment_id, @order_id, @return_url, @pay_url, 'pending', @created_at, @expires_at)`
 )
 
 /**
@@ -73,15 +73,28 @@ export async function paymentsRoutes(app: FastifyInstance): Promise<void> {
     if (result.status >= 200 && result.status < 300 && result.data?.id) {
       storeMeta(String(result.data.id), ref, original)
       restoreMeta(result.data) // вернуть суб-мерчанту его metadata как обычно
+
+      // Переход НА оплату через страницу агрегатора: реальный confirmation_url
+      // кассы прячем в токен, а суб-мерчанту отдаём ссылку на /pay/go. Тогда
+      // браузер идёт на кассу с домена агрегатора, а не суб-мерчанта (Referer).
+      const realPayUrl: string | null =
+        isObject(result.data.confirmation) && typeof result.data.confirmation.confirmation_url === 'string'
+          ? result.data.confirmation.confirmation_url
+          : null
+
       if (token && origReturn) {
         insertToken.run({
           token,
           payment_id: String(result.data.id),
           order_id: orderId,
           return_url: origReturn,
+          pay_url: realPayUrl,
           created_at: nowSec(),
           expires_at: nowSec() + config.redirect.ttlSeconds
         })
+        if (realPayUrl) {
+          result.data.confirmation.confirmation_url = `${config.publicUrl}${config.pay.goPath}?id=${token}`
+        }
       }
     }
 

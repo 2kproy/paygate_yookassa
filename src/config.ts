@@ -55,6 +55,21 @@ export const config = {
     allowedOrigins: list('ALLOWED_RETURN_ORIGINS'),
     ttlSeconds: Number(process.env.REDIRECT_TTL_SECONDS ?? 3600),
     successTtlSeconds: Number(process.env.SUCCESS_TTL_SECONDS ?? 180)
+  },
+
+  // Промежуточная страница перехода НА оплату. Суб-мерчант ведёт юзера на неё
+  // (мы подменяем confirmation_url в ответе создания платежа), а она сама
+  // отправляет браузер на реальную страницу кассы. Так касса видит переход
+  // с домена агрегатора, а не с домена суб-мерчанта (Referer/Origin).
+  pay: {
+    goPath: process.env.GO_PATH ?? '/pay/go',
+    // Политика Referer страницы перехода. 'origin' → касса получит
+    // `https://<агрегатор>/` (без пути/токена). 'no-referrer' → пусто.
+    // НЕ ставить 'unsafe-url' — утечёт токен из query.
+    goReferrerPolicy: process.env.GO_REFERRER_POLICY ?? 'origin',
+    // Куда РАЗРЕШЕНО отправлять на оплату (хосты кассы). Анти-open-redirect:
+    // подменённая ссылка обязана вести только на кассу.
+    allowedPayHosts: list('ALLOWED_PAY_HOSTS', 'yoomoney.ru,yookassa.ru')
   }
 }
 

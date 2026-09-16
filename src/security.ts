@@ -69,6 +69,24 @@ export function isReturnOriginAllowed(url: string): boolean {
   }
 }
 
+/**
+ * Разрешён ли хост для перехода НА оплату (анти-open-redirect для /pay/go).
+ * Пускаем только на кассу (yoomoney.ru/yookassa.ru и их поддомены), и только
+ * по https. Так подменённая ссылка не может увести браузер на произвольный сайт.
+ */
+export function isPayUrlAllowed(url: string): boolean {
+  try {
+    const u = new URL(url)
+    if (u.protocol !== 'https:') return false
+    const host = u.hostname.toLowerCase()
+    return config.pay.allowedPayHosts.some(
+      (h) => host === h.toLowerCase() || host.endsWith('.' + h.toLowerCase())
+    )
+  } catch {
+    return false
+  }
+}
+
 export function isYookassaIp(ip: string): boolean {
   return inBlockList(yookassaBlock, ip)
 }

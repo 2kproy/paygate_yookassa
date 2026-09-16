@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS redirect_token (
   payment_id   TEXT,
   order_id     TEXT,
   return_url   TEXT NOT NULL,
+  pay_url      TEXT,                               -- реальный confirmation_url кассы (переход НА оплату)
   status       TEXT NOT NULL DEFAULT 'pending',   -- pending | succeeded | canceled
   created_at   INTEGER NOT NULL,
   expires_at   INTEGER NOT NULL,
@@ -47,6 +48,16 @@ CREATE TABLE IF NOT EXISTS webhook_delivery (
 CREATE INDEX IF NOT EXISTS idx_wh_due ON webhook_delivery(dead, delivered_at, next_attempt_at);
 `)
 
+// Миграция: колонка pay_url добавлена позже CREATE TABLE выше. На уже
+// развёрнутой БД таблица существует без неё — дозаводим (SQLite не умеет
+// ADD COLUMN IF NOT EXISTS, поэтому проверяем через pragma).
+{
+  const cols = db.prepare(`PRAGMA table_info(redirect_token)`).all() as { name: string }[]
+  if (!cols.some((c) => c.name === 'pay_url')) {
+    db.exec(`ALTER TABLE redirect_token ADD COLUMN pay_url TEXT`)
+  }
+}
+
 export const nowSec = (): number => Math.floor(Date.now() / 1000)
 
 export interface RedirectToken {
@@ -54,6 +65,7 @@ export interface RedirectToken {
   payment_id: string | null
   order_id: string | null
   return_url: string
+  pay_url: string | null
   status: 'pending' | 'succeeded' | 'canceled'
   created_at: number
   expires_at: number
