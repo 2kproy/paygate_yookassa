@@ -54,7 +54,20 @@ export const config = {
     returnPath: process.env.RETURN_PATH ?? '/pay/return',
     allowedOrigins: list('ALLOWED_RETURN_ORIGINS'),
     ttlSeconds: Number(process.env.REDIRECT_TTL_SECONDS ?? 3600),
-    successTtlSeconds: Number(process.env.SUCCESS_TTL_SECONDS ?? 180)
+    successTtlSeconds: Number(process.env.SUCCESS_TTL_SECONDS ?? 180),
+    // Как возвращать пользователя после оплаты:
+    //   'redirect' (по умолчанию, портируемо) — 302 на origin суб-мерчанта;
+    //   'buttons'  — страница агрегатора с кнопками (без авто-редиректа: касса,
+    //                зайдя на return_url, видит страницу агрегатора, а не 302
+    //                на домен суб-мерчанта). Ссылки/подписи — ниже, из env,
+    //                чтобы в коде не фигурировали конкретные домены суб-мерчанта.
+    mode: process.env.RETURN_MODE ?? 'redirect',
+    cabinetUrl: process.env.RETURN_CABINET_URL ?? '',
+    cabinetLabel: process.env.RETURN_CABINET_LABEL ?? 'Вернуться в личный кабинет',
+    siteUrl: process.env.RETURN_SITE_URL ?? '',
+    siteLabel: process.env.RETURN_SITE_LABEL ?? 'Перейти на сайт',
+    telegramUrl: process.env.RETURN_TELEGRAM_URL ?? '',
+    telegramLabel: process.env.RETURN_TELEGRAM_LABEL ?? 'Перейти в Telegram'
   },
 
   // Промежуточная страница перехода НА оплату. Суб-мерчант ведёт юзера на неё

@@ -31,6 +31,57 @@ h1{font-size:20px;margin:0 0 12px}p{opacity:.8;margin:0 0 20px}</style>
 <a href="${u}" rel="noopener">Перейти к оплате →</a></div></body></html>`
 }
 
+/**
+ * Страница возврата после оплаты с кнопками (режим 'buttons'). В отличие от 302,
+ * касса, зайдя на зарегистрированный return_url, получает страницу агрегатора, а
+ * не редирект на домен суб-мерчанта. Кнопка, совпадающая с источником оплаты
+ * (сайт/Telegram — по хосту return_url), ведёт на реальный адрес возврата;
+ * остальные — на общие ссылки из env. Первой всегда — личный кабинет агрегатора.
+ */
+function returnButtonsHtml(realReturn: string): string {
+  const r = config.redirect
+  const host = (() => {
+    try {
+      return new URL(realReturn).hostname.toLowerCase()
+    } catch {
+      return ''
+    }
+  })()
+  const isTelegram = host === 't.me' || host.endsWith('.t.me')
+
+  const btns: Array<{ href: string; label: string; primary?: boolean }> = []
+  if (r.cabinetUrl) btns.push({ href: r.cabinetUrl, label: r.cabinetLabel, primary: true })
+  // Сайт: реальный адрес возврата, если платёж пришёл с сайта; иначе общий.
+  const siteHref = isTelegram ? r.siteUrl : realReturn
+  if (siteHref) btns.push({ href: siteHref, label: r.siteLabel })
+  // Telegram: реальный адрес, если платёж пришёл из Telegram; иначе общий.
+  const tgHref = isTelegram ? realReturn : r.telegramUrl
+  if (tgHref) btns.push({ href: tgHref, label: r.telegramLabel })
+
+  const buttons = btns
+    .map(
+      (b) =>
+        `<a class="btn${b.primary ? ' primary' : ''}" href="${esc(b.href)}" rel="noopener">${esc(b.label)}</a>`
+    )
+    .join('\n')
+
+  return `<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>Оплата завершена</title>
+<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+font:16px/1.5 system-ui,Segoe UI,Roboto,sans-serif;background:#0f1115;color:#e6e8ec}
+.card{max-width:420px;padding:32px;text-align:center}
+h1{font-size:20px;margin:0 0 8px}p{opacity:.8;margin:0 0 24px}
+.btn{display:block;margin:10px 0;padding:13px 18px;border-radius:10px;text-decoration:none;
+background:#1c2029;color:#e6e8ec;border:1px solid #2c313c}
+.btn.primary{background:#2f6bff;border-color:#2f6bff;color:#fff}</style></head>
+<body><div class="card"><h1>Оплата завершена</h1>
+<p>Спасибо! Куда перейти дальше?</p>
+${buttons}</div></body></html>`
+}
+
 const STUB_HTML = `<!doctype html><html lang="ru"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Личный кабинет</title>
@@ -48,13 +99,23 @@ export async function redirectRoutes(app: FastifyInstance): Promise<void> {
     if (!id) return reply.code(404).type('text/html; charset=utf-8').send(STUB_HTML)
 
     const row = findToken.get(id) as RedirectToken | undefined
-    // Редиректим ТОЛЬКО по живому токену реального платежа агрегатора; иначе — заглушка.
+    // Возвращаем ТОЛЬКО по живому токену реального платежа агрегатора; иначе — заглушка.
     if (!row || row.expires_at < nowSec() || !isReturnOriginAllowed(row.return_url)) {
       return reply.code(404).type('text/html; charset=utf-8').send(STUB_HTML)
     }
 
     const target = new URL(row.return_url)
     target.searchParams.set('paid', '1')
+
+    // Режим 'buttons': не редиректим на домен суб-мерчанта (иначе касса, зайдя
+    // на return_url, получит 302 на этот домен). Отдаём страницу агрегатора.
+    if (config.redirect.mode === 'buttons') {
+      return reply
+        .header('cache-control', 'no-store')
+        .type('text/html; charset=utf-8')
+        .send(returnButtonsHtml(target.toString()))
+    }
+
     return reply.header('location', target.toString()).code(302).send()
   })
 
