@@ -34,5 +34,9 @@ async function call(method: 'GET' | 'POST', path: string, body?: unknown, idempo
 export const yookassa = {
   createPayment: (payload: unknown, idempotenceKey?: string) => call('POST', 'payments', payload, idempotenceKey),
   getPayment: (id: string) => call('GET', `payments/${encodeURIComponent(id)}`),
-  createRefund: (payload: unknown, idempotenceKey?: string) => call('POST', 'refunds', payload, idempotenceKey)
+  // query — строка вида `?created_at.gte=…&limit=100&cursor=…` (как у ЮKassa), может быть пустой.
+  listPayments: (query: string) => call('GET', `payments${query}`),
+  createRefund: (payload: unknown, idempotenceKey?: string) => call('POST', 'refunds', payload, idempotenceKey),
+  getRefund: (id: string) => call('GET', `refunds/${encodeURIComponent(id)}`),
+  listRefunds: (query: string) => call('GET', `refunds${query}`)
 }

@@ -18,6 +18,17 @@ function isObject(v: unknown): v is Record<string, any> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
+/** Query-строка запроса как есть (`?a=b&…` или пусто) — пробрасываем в ЮKassa дословно. */
+function rawQuery(req: FastifyRequest): string {
+  const i = req.url.indexOf('?')
+  return i >= 0 ? req.url.slice(i) : ''
+}
+
+/** Восстановить metadata у каждого элемента списка (`items`). */
+function restoreListMeta(data: any): void {
+  if (isObject(data) && Array.isArray(data.items)) for (const item of data.items) restoreMeta(item)
+}
+
 const insertToken = db.prepare(
   `INSERT INTO redirect_token (token, payment_id, order_id, return_url, pay_url, status, created_at, expires_at)
    VALUES (@token, @payment_id, @order_id, @return_url, @pay_url, 'pending', @created_at, @expires_at)`
@@ -109,11 +120,34 @@ export async function paymentsRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(result.status).send(result.data)
   })
 
+  // GET /agg/v1/payments?… — список платежей (сверка суб-мерчанта с кассой:
+  // created_at.gte/lte, status, limit, cursor — параметры ЮKassa как есть).
+  app.get('/agg/v1/payments', async (req, reply) => {
+    const result = await yookassa.listPayments(rawQuery(req))
+    restoreListMeta(result.data)
+    return reply.code(result.status).send(result.data)
+  })
+
   // POST /agg/v1/refunds — возврат средств (сырое тело как есть).
   app.post('/agg/v1/refunds', async (req, reply) => {
     const payload = req.body as Record<string, any>
     if (!isObject(payload)) return reply.code(400).send({ error: 'bad request' })
     const result = await yookassa.createRefund(payload, idemKey(req))
+    return reply.code(result.status).send(result.data)
+  })
+
+  // GET /agg/v1/refunds?… — список возвратов (payment_id, created_at.gte/lte, status,
+  // limit, cursor). Нужен суб-мерчанту, чтобы увидеть возвраты, сделанные руками
+  // в кабинете кассы, и сверить их со своими записями.
+  app.get('/agg/v1/refunds', async (req, reply) => {
+    const result = await yookassa.listRefunds(rawQuery(req))
+    return reply.code(result.status).send(result.data)
+  })
+
+  // GET /agg/v1/refunds/:id — статус конкретного возврата.
+  app.get('/agg/v1/refunds/:id', async (req, reply) => {
+    const id = (req.params as { id: string }).id
+    const result = await yookassa.getRefund(id)
     return reply.code(result.status).send(result.data)
   })
 }

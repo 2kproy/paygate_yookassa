@@ -86,7 +86,12 @@ HMAC — свой ключ ЮKassa он не держит.
 `/agg/v1/*` — зеркало `/v3/*` ЮKassa (принимает те же тела):
 - `POST /agg/v1/payments` — создать платёж или автосписание (`payment_method_id`).
 - `GET  /agg/v1/payments/{id}` — статус платежа (перепроверка).
+- `GET  /agg/v1/payments?created_at.gte=…&limit=…&cursor=…` — список платежей
+  (сверка с кассой; параметры ЮKassa пробрасываются как есть, metadata восстанавливаются).
 - `POST /agg/v1/refunds` — возврат.
+- `GET  /agg/v1/refunds?payment_id=…` / `?created_at.gte=…` — список возвратов
+  (в т.ч. сделанных руками в кабинете кассы).
+- `GET  /agg/v1/refunds/{id}` — статус возврата.
 
 Служебные:
 - `POST <WEBHOOK_PATH>` — вебхук ЮKassa (публичный, IP-allowlist).
@@ -100,7 +105,7 @@ HMAC — свой ключ ЮKassa он не держит.
 paygate — прозрачный прокси: **тела запросов остаются обычными телами ЮKassa**.
 Меняется только адрес, авторизация и подпись. Три изменения:
 
-### 1) Исходящие запросы (create / charge / refund / get)
+### 1) Исходящие запросы (create / charge / refund / get / list)
 
 - Базовый адрес клиента: `https://api.yookassa.ru/v3` → `https://<домен-агрегатора>/agg/v1`.
 - **Убрать Basic-Auth** (`shopId:secretKey`) — ключ подставит paygate.
