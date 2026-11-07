@@ -77,9 +77,10 @@ export async function paymentsRoutes(app: FastifyInstance): Promise<void> {
 
     // Прячем metadata от ЮKassa (в неё уходит только ref), оригинал храним у себя.
     const orderId = String((payload as any)?.metadata?.orderId ?? (payload as any)?.metadata?.bot_order_id ?? '') || null
-    const { original, ref } = maskMetadata(payload)
+    const key = idemKey(req)
+    const { original, ref } = maskMetadata(payload, key)
 
-    const result = await yookassa.createPayment(payload, idemKey(req))
+    const result = await yookassa.createPayment(payload, key)
 
     if (result.status >= 200 && result.status < 300 && result.data?.id) {
       storeMeta(String(result.data.id), ref, original)

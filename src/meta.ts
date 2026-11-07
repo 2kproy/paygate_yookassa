@@ -1,4 +1,5 @@
-import { randomBytes } from 'node:crypto'
+import { createHmac, randomBytes } from 'node:crypto'
+import { config } from './config.js'
 import { db, nowSec } from './db.js'
 
 /**
@@ -14,11 +15,25 @@ const put = db.prepare(
 )
 const get = db.prepare(`SELECT meta_json FROM payment_meta WHERE payment_id = ?`)
 
+/**
+ * ref для запроса. С ключом идемпотентности — постоянный (HMAC от ключа): повтор
+ * того же запроса после сбоя связи обязан уйти в ЮKassa байт-в-байт, иначе она
+ * отвечает «ключ уже использован для другого запроса» и не возвращает созданный
+ * платёж (защита от двойного списания ломается). Сам ключ наружу не уходит.
+ */
+export function refFor(idempotenceKey?: string): string {
+  if (!idempotenceKey) return randomBytes(8).toString('hex')
+  return createHmac('sha256', config.ingress.secret).update(`meta-ref:${idempotenceKey}`).digest('hex').slice(0, 16)
+}
+
 /** Заменить payload.metadata на непрозрачный ref ПЕРЕД отправкой в ЮKassa. */
-export function maskMetadata(payload: Record<string, any>): { original: unknown; ref: string | null } {
+export function maskMetadata(
+  payload: Record<string, any>,
+  idempotenceKey?: string
+): { original: unknown; ref: string | null } {
   const original = payload.metadata
   if (original === undefined || original === null) return { original: null, ref: null }
-  const ref = randomBytes(8).toString('hex')
+  const ref = refFor(idempotenceKey)
   payload.metadata = { ref } // непрозрачная метка для кросс-сверки в кабинете
   return { original, ref }
 }

@@ -72,7 +72,7 @@ HMAC — свой ключ ЮKassa он не держит.
 | `INGRESS_ALLOWED_IPS` | IP серверов суб-мерчанта (CIDR). |
 | `FORWARD_URL` | Вебхук-эндпоинт суб-мерчанта (куда форвардим). |
 | `FORWARD_SECRET` | 🔑 HMAC-секрет: paygate → суб-мерчант. |
-| `ALLOWED_RETURN_ORIGINS` | Разрешённые origin'ы возврата (все домены суб-мерчанта). |
+| `ALLOWED_RETURN_ORIGINS` | Разрешённые origin'ы возврата (все домены суб-мерчанта). Маска `https://*.example.com` — любые поддомены (сам домен указывается отдельно). |
 | `REDIRECT_TTL_SECONDS` / `SUCCESS_TTL_SECONDS` | Жизнь токена редиректа. |
 | `DB_PATH` | Файл SQLite (volume). |
 

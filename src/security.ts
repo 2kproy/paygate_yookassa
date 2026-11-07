@@ -63,10 +63,23 @@ export function isReturnOriginAllowed(url: string): boolean {
   if (config.redirect.allowedOrigins.length === 0) return true // dev: allowlist не задан
   try {
     const u = new URL(url)
-    return config.redirect.allowedOrigins.includes(`${u.protocol}//${u.host}`)
+    const origin = `${u.protocol}//${u.host}`.toLowerCase()
+    return config.redirect.allowedOrigins.some((allowed) => originMatches(allowed, origin, u))
   } catch {
     return false
   }
+}
+
+/**
+ * Элемент allowlist: точный origin (`https://example.com`) или маска поддоменов
+ * `https://*.example.com` — любой поддомен любой глубины, но НЕ сам example.com
+ * (его перечисляют отдельно). Маска только по той же схеме и без порта.
+ */
+function originMatches(allowed: string, origin: string, u: URL): boolean {
+  const a = allowed.trim().toLowerCase().replace(/\/+$/, '')
+  const m = /^(https?:)\/\/\*\.([a-z0-9.-]+)$/.exec(a)
+  if (!m) return a === origin
+  return u.protocol === m[1] && u.port === '' && u.hostname.toLowerCase().endsWith('.' + m[2])
 }
 
 /**
