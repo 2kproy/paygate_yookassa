@@ -73,6 +73,7 @@ HMAC — свой ключ ЮKassa он не держит.
 | `FORWARD_URL` | Вебхук-эндпоинт суб-мерчанта (куда форвардим). |
 | `FORWARD_SECRET` | 🔑 HMAC-секрет: paygate → суб-мерчант. |
 | `ALLOWED_RETURN_ORIGINS` | Разрешённые origin'ы возврата (все домены суб-мерчанта). Маска `https://*.example.com` — любые поддомены (сам домен указывается отдельно). |
+| `RETURN_DIRECT_ORIGINS` | Origin'ы, которым и в режиме `buttons` отдаётся прямой 302 (страница суб-мерчанта сама показывает итог оплаты). Формат как у `ALLOWED_RETURN_ORIGINS`. |
 | `REDIRECT_TTL_SECONDS` / `SUCCESS_TTL_SECONDS` | Жизнь токена редиректа. |
 | `DB_PATH` | Файл SQLite (volume). |
 

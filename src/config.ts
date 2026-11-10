@@ -62,6 +62,9 @@ export const config = {
     //                на домен суб-мерчанта). Ссылки/подписи — ниже, из env,
     //                чтобы в коде не фигурировали конкретные домены суб-мерчанта.
     mode: process.env.RETURN_MODE ?? 'redirect',
+    // Origin'ы, которые и в режиме 'buttons' получают прямой 302 (страница
+    // суб-мерчанта сама показывает итог оплаты). Формат как у ALLOWED_RETURN_ORIGINS.
+    directOrigins: list('RETURN_DIRECT_ORIGINS'),
     cabinetUrl: process.env.RETURN_CABINET_URL ?? '',
     cabinetLabel: process.env.RETURN_CABINET_LABEL ?? 'Вернуться в личный кабинет',
     siteUrl: process.env.RETURN_SITE_URL ?? '',

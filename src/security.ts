@@ -70,6 +70,17 @@ export function isReturnOriginAllowed(url: string): boolean {
   }
 }
 
+/** Возврат на этот origin идёт прямым 302 даже в режиме 'buttons' (RETURN_DIRECT_ORIGINS). */
+export function isReturnDirect(url: string): boolean {
+  try {
+    const u = new URL(url)
+    const origin = `${u.protocol}//${u.host}`.toLowerCase()
+    return config.redirect.directOrigins.some((allowed) => originMatches(allowed, origin, u))
+  } catch {
+    return false
+  }
+}
+
 /**
  * Элемент allowlist: точный origin (`https://example.com`) или маска поддоменов
  * `https://*.example.com` — любой поддомен любой глубины, но НЕ сам example.com

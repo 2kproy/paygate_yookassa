@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { config } from '../config.js'
 import { db, nowSec, type RedirectToken } from '../db.js'
-import { isPayUrlAllowed, isReturnOriginAllowed } from '../security.js'
+import { isPayUrlAllowed, isReturnDirect, isReturnOriginAllowed } from '../security.js'
 
 const findToken = db.prepare(`SELECT * FROM redirect_token WHERE token = ?`)
 
@@ -109,7 +109,8 @@ export async function redirectRoutes(app: FastifyInstance): Promise<void> {
 
     // Режим 'buttons': не редиректим на домен суб-мерчанта (иначе касса, зайдя
     // на return_url, получит 302 на этот домен). Отдаём страницу агрегатора.
-    if (config.redirect.mode === 'buttons') {
+    // Исключение — origin'ы из RETURN_DIRECT_ORIGINS: им 302 и в этом режиме.
+    if (config.redirect.mode === 'buttons' && !isReturnDirect(target.toString())) {
       return reply
         .header('cache-control', 'no-store')
         .type('text/html; charset=utf-8')
